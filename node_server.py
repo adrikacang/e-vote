@@ -7,9 +7,9 @@ import requests
 
 
 class Block:
-    def __init__(self, index, transaction, timestamp, previous_hash, nonce=0):
+    def __init__(self, index, transactions, timestamp, previous_hash, nonce=0):
         self.index = index
-        self.transaction = transaction
+        self.transactions = transactions
         self.timestamp = timestamp
         self.previous_hash = previous_hash
         self.nonce = nonce
@@ -36,7 +36,7 @@ class Blockchain:
         the chain. The block has index 0, previous_hash as 0, and
         a valid hash.
         """
-        genesis_block = Block(0, { 'nik': '0' }, 0, "0")
+        genesis_block = Block(0, [], 0, "0")
         genesis_block.hash = genesis_block.compute_hash()
         self.chain.append(genesis_block)
 
@@ -121,16 +121,13 @@ class Blockchain:
             return False
 
         last_block = self.last_block
+        new_block = Block(index=last_block.index + 1,
+                          transactions=self.unconfirmed_transactions,
+                          timestamp=time.time(),
+                          previous_hash=last_block.hash)
 
-        for transaction in self.unconfirmed_transactions: 
-            new_block = Block(index=last_block.index + 1,
-                              transaction=transaction,
-                              timestamp=time.time(),
-                              previous_hash=last_block.hash)
-
-            proof = self.proof_of_work(new_block)
-            self.add_block(new_block, proof)
-            print("Block #{} is mined.".format(last_block.index))
+        proof = self.proof_of_work(new_block)
+        self.add_block(new_block, proof)
 
         self.unconfirmed_transactions = []
 
