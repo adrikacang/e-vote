@@ -3,6 +3,8 @@ import json
 import time
 
 from flask import Flask, request
+from merkletools import MerkleTools
+
 import requests
 
 
@@ -13,6 +15,7 @@ class Block:
         self.timestamp = timestamp
         self.previous_hash = previous_hash
         self.nonce = nonce
+        self.hash = '0'
 
     def compute_hash(self):
         """
@@ -21,6 +24,17 @@ class Block:
         block_string = json.dumps(self.__dict__, sort_keys=True)
         return sha256(block_string.encode()).hexdigest()
 
+    def merkle_tree(self):
+        mt = MerkleTools(hash_type="sha256")
+        for trx in self.transactions:
+            trx_string = json.dumps(trx)
+            mt.add_leaf(trx_string, True)
+        mt.make_tree()
+        return mt
+
+    def validate_proof(self, proof, index):
+        mt = merkle_tree()
+        print(mt.validate_proof(proof, mt.get_leaf(index), mt.get_merkle_root()))  # True
 
 class Blockchain:
     # difficulty of our PoW algorithm
@@ -291,9 +305,10 @@ def count_vote():
         "Prabowo": 0
     }
     for block in blockchain.chain:
-        voted_candidate = block.transaction.get('voted_candidate')
-        candidates[voted_candidate] += 1
-    print(json.dumps(candidates))
+        for transaction in block.transactions:
+            voted_candidate = transaction.get('voted_candidate')
+            candidates[voted_candidate] += 1
+    return json.dumps(candidates)
 
 @app.route('/verify_vote', methods=['POST'])
 def verify_vote():
