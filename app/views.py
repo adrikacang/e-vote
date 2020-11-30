@@ -12,7 +12,9 @@ from app import app
 CONNECTED_NODE_ADDRESS = "http://127.0.0.1:8000"
 is_login = False
 nik = None
-
+has_voted = False
+success = None
+error = None
 
 @app.route('/')
 def index():
@@ -21,7 +23,10 @@ def index():
                            title='YourEvote: A Decentralized '
                                  'Verifiable E-Vote System',
                            node_address=CONNECTED_NODE_ADDRESS,
-                           readable_time=timestamp_to_string)
+                           readable_time=timestamp_to_string, 
+                           has_voted = has_voted,
+                           success= success,
+                           error=error)
     else:    
         return redirect(url_for('login'))
 
@@ -69,6 +74,9 @@ def timestamp_to_string(epoch_time):
 @app.route('/vote', methods=['POST', 'GET'])
 def vote():
     error = None
+    success = None
+    global has_voted
+
     if (not is_login):
         return redirect(url_for('login'))
     
@@ -98,8 +106,8 @@ def vote():
                     headers={'Content-type': 'application/json'})
         
             if response.status_code == 201:
-                flash(response.text)
-                return redirect(url_for('index'))
+                success = response.text
+                has_voted = True
             else: 
                 error = response.text
         except requests.ConnectionError:
@@ -109,11 +117,58 @@ def vote():
                            title='Vote',
                            node_address=CONNECTED_NODE_ADDRESS,
                            readable_time=timestamp_to_string,
-                           nik = nik, 
+                           has_voted= has_voted,
+                           nik = nik,
+                           success = success,
                            error= error)
+
+@app.route('/mine', methods=['GET'])
+def mine():
+    if (not is_login):
+        return redirect(url_for('login'))  
+    
+    else:
+      error = None
+      success = None
+      new_tx_address = "{}/mine".format(CONNECTED_NODE_ADDRESS)
+      response = requests.get(new_tx_address)
+      if response.status_code == 200:
+        success = response.text
+      else:
+        error = response.text
+      return render_template('mine.html',                            
+                            title='Mine',
+                            node_address=CONNECTED_NODE_ADDRESS,
+                            readable_time=timestamp_to_string,
+                            success=success,
+                            error= error)
+
+@app.route('/count', methods=['GET'])
+def count():
+    if (not is_login):
+        return redirect(url_for('login'))  
+    
+    else:
+      error = None
+      success = None
+      new_tx_address = "{}/count_vote".format(CONNECTED_NODE_ADDRESS)
+      response = requests.get(new_tx_address)
+      if response.status_code == 200:
+        success = response.text
+      else:
+        error = response.text
+      return render_template('count.html',                            
+                            title='Count',
+                            node_address=CONNECTED_NODE_ADDRESS,
+                            readable_time=timestamp_to_string,
+                            success=success,
+                            error= error)
+
 
 @app.route('/verify', methods=['POST', 'GET'])
 def verify():
+    success = None
+    error = None
     if (not is_login):
         return redirect(url_for('login'))
     
@@ -123,13 +178,15 @@ def verify():
         leaf_index = request.form["leaf_index"]
 
         post_object = {
-            "block_index": block_index,
+            "block_index": int(block_index),
             "merkle_root": merkle_root,
-            "leaf_index": leaf_index
+            "leaf_index": int(leaf_index)
         }
         
         # Submit a new transaction
-        new_tx_address = "{}/new_transaction".format(CONNECTED_NODE_ADDRESS)
+        new_tx_address = "{}/verify_vote".format(CONNECTED_NODE_ADDRESS)
+
+        print(json.dumps(post_object))
 
         try:
             response = requests.post(new_tx_address,
@@ -137,7 +194,7 @@ def verify():
                     headers={'Content-type': 'application/json'})
         
             if response.status_code == 200:
-                return redirect(url_for('index'))
+                success = response.text
             else: 
                 error = response.text		
         except requests.ConnectionError:
@@ -146,4 +203,22 @@ def verify():
                             title='Verify',
                             node_address=CONNECTED_NODE_ADDRESS,
                             readable_time=timestamp_to_string,
+                            success=success,
                             error= error)
+
+
+@app.route('/logout', methods=['GET'])
+def logout():
+    global is_login
+    global nik
+    global success
+    global error
+    global has_voted
+
+    is_login = False
+    nik = None
+    success = None
+    error = None
+    has_voted = False
+
+    return redirect(url_for('login'))

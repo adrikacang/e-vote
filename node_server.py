@@ -189,6 +189,9 @@ def new_transaction():
     for field in required_fields:
         if not tx_data.get(field):
             return "Invalid transaction data", 404
+    
+    if tx_data["nik"] in blockchain.niks:
+        return "This voter has been voted", 400
 
     tx_data_str = json.dumps(tx_data)
     tx_data_hash = sha256(tx_data_str.encode()).hexdigest()
@@ -196,7 +199,7 @@ def new_transaction():
     blockchain.add_new_transaction(tx_data)
     tx_leaf_index = len(blockchain.unconfirmed_transactions) - 1 #get leaf index
     blockchain.niks.append(tx_data['nik'])
-    return "Vote has been requested, please record the id for verifaction purpose \nmerkle leaf: " + tx_data_hash + "\n leaf index: " +  str(tx_leaf_index), 201
+    return "<p> Vote has been requested, please note the following data for verifaction purpose. </p> <p> vote hash: " + tx_data_hash + "</p> <p>leaf index: " +  str(tx_leaf_index) + "</p>", 201
 
 
 # endpoint to return the node's copy of the chain.
@@ -227,7 +230,7 @@ def mine_unconfirmed_transactions():
         if chain_length == len(blockchain.chain):
             # announce the recently mined block to the network
             announce_new_block(blockchain.last_block)
-        return "A new block has been mined. Please record this for verification purpose \n block-index: {} \n merkle-root: {}".format(blockchain.last_block.index, blockchain.last_block.merkle_tree())
+        return "<p> A new block has been mined. Please record this for verification purpose. </p> <p> block-index: {} </p> <p> merkle-root: {} </p>".format(blockchain.last_block.index, blockchain.last_block.merkle_tree()), 200
 
 
 # endpoint to add new peers to the network.
@@ -339,7 +342,7 @@ def verify_vote():
     merkle_root = request.get_json()["merkle_root"]
     leaf_index = request.get_json()["leaf_index"]
 
-    if not block_index or not merkle_root or leaf_index:
+    if block_index is None or merkle_root is None or leaf_index is None:
         return "Invalid or Missing Parameters", 400
 
     block = blockchain.chain[block_index]

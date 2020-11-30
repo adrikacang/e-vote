@@ -31,13 +31,23 @@
       </div>
     </div>
     <div class="form-group">
-      <input type="submit" class="btn btn-secondary" value="submit">
+      {% if not has_voted %}
+      <input type="submit" class="btn btn-primary" value="submit">
+      {% else %}
+      <input  class="btn btn-primary" value="Congratulations!" disabled>
+      {% endif %}
     </div>
     {% if error %}
     <div class="alert alert-danger" role="alert">
-      {{ error }}
+      {{ error|safe }}
     </div>
     {% endif %}
-    </form>
+    {% if success %}
+    <div class="alert alert-success" role="alert">
+      {{ success|safe }}
+    </div>
+    {% endif %}
+  </form>
+  <a href="/" class="btn btn-secondary">Return</a>
 </div>
 {% endblock %}
