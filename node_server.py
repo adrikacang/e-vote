@@ -30,11 +30,15 @@ class Block:
             trx_string = json.dumps(trx)
             mt.add_leaf(trx_string, True)
         mt.make_tree()
-        return mt
+        return mt.get_merkle_root()
 
-    def validate_proof(self, proof, index):
-        mt = merkle_tree()
-        print(mt.validate_proof(proof, mt.get_leaf(index), mt.get_merkle_root()))  # True
+    def verify_vote(self, leaf_index, merkle_root):
+        mt = MerkleTools(hash_type="sha256")
+        for trx in self.transactions:
+            trx_string = json.dumps(trx)
+            mt.add_leaf(trx_string, True)
+        mt.make_tree()
+        return mt.validate_proof(mt.get_proof(leaf_index), mt.get_leaf(leaf_index), merkle_root) # True
 
 class Blockchain:
     # difficulty of our PoW algorithm
@@ -43,6 +47,7 @@ class Blockchain:
     def __init__(self):
         self.unconfirmed_transactions = []
         self.chain = []
+        self.niks = []
 
     def create_genesis_block(self):
         """
@@ -157,6 +162,22 @@ blockchain.create_genesis_block()
 # the address to other participating members of the network
 peers = set()
 
+# endpoint to login. This will be used by
+# our application to add new data (posts) to the blockchain
+@app.route('/login', methods=['POST'])
+def login():
+    tx_data = request.get_json()
+    required_fields = ["nik"]
+
+    for field in required_fields:
+        if not tx_data.get(field):
+            return "Invalid transaction data", 404
+
+    if tx_data["nik"] in blockchain.niks:
+        return "Voter has been voted", 400
+
+    return "Voter has not been voted", 200
+
 
 # endpoint to submit a new transaction. This will be used by
 # our application to add new data (posts) to the blockchain
@@ -169,11 +190,13 @@ def new_transaction():
         if not tx_data.get(field):
             return "Invalid transaction data", 404
 
-    tx_data["timestamp"] = time.time()
+    tx_data_str = json.dumps(tx_data)
+    tx_data_hash = sha256(tx_data_str.encode()).hexdigest()
 
     blockchain.add_new_transaction(tx_data)
-
-    return "Success", 201
+    tx_leaf_index = len(blockchain.unconfirmed_transactions) - 1 #get leaf index
+    blockchain.niks.append(tx_data['nik'])
+    return "Vote has been requested, please record the id for verifaction purpose \nmerkle leaf: " + tx_data_hash + "\n leaf index: " +  str(tx_leaf_index), 201
 
 
 # endpoint to return the node's copy of the chain.
@@ -204,7 +227,7 @@ def mine_unconfirmed_transactions():
         if chain_length == len(blockchain.chain):
             # announce the recently mined block to the network
             announce_new_block(blockchain.last_block)
-        return "#{} blocks are mined.".format(blockchain.last_block.index)
+        return "A new block has been mined. Please record this for verification purpose \n block-index: {} \n merkle-root: {}".format(blockchain.last_block.index, blockchain.last_block.merkle_tree())
 
 
 # endpoint to add new peers to the network.
@@ -312,15 +335,18 @@ def count_vote():
 
 @app.route('/verify_vote', methods=['POST'])
 def verify_vote():
-    hash = request.get_json()["hash"]
-    if not hash:
-        return "Invalid data", 400
+    block_index = request.get_json()["block_index"]
+    merkle_root = request.get_json()["merkle_root"]
+    leaf_index = request.get_json()["leaf_index"]
 
-    for block in blockchain.chain:
-        if block.hash == hash:
-            return json.dumps(block.transaction), 200
+    if not block_index or not merkle_root or leaf_index:
+        return "Invalid or Missing Parameters", 400
 
-    return "Hash not found", 400
+    block = blockchain.chain[block_index]
+    if block.verify_vote(leaf_index, merkle_root):
+        return "Your vote has been verified", 200
+    else:
+        return "Data is not found or has been tampered, verifiaction failed", 400
 
 def consensus():
     """

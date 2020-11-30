@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="container">
+    <div class="row">
+      <div class="col-sm">
+        <div class="card" style="width: 18rem;">
+            <!-- <img class="card-img-top" src="{{url_for('static', filename='ayrton_senna_movie_wallpaper_by_bashgfx-d4cm6x6.jpg')}}" alt="Card image cap"> -->
+            <div class="card-body">
+              <h5 class="card-title">Vote</h5>
+              <p class="card-text">Cast a vote for the election.</p>
+              <a href="/vote" class="btn btn-primary">Go</a>
+            </div>
+          </div>
+      </div>
+      <div class="col-sm">
+        <div class="card" style="width: 18rem;">
+            <!-- <img class="card-img-top" src="{{url_for('static', filename='ayrton_senna_movie_wallpaper_by_bashgfx-d4cm6x6.jpg')}}" alt="Card image cap"> -->
+            <div class="card-body">
+              <h5 class="card-title">Verify</h5>
+              <p class="card-text">Verify your vote.</p>
+              <a href="/verify" class="btn btn-primary">Go</a>
+            </div>
+          </div>
+      </div>
+      <div class="col-sm">
+        <div class="card" style="width: 18rem;">
+            <!-- <img class="card-img-top" src="{{url_for('static', filename='ayrton_senna_movie_wallpaper_by_bashgfx-d4cm6x6.jpg')}}" alt="Card image cap"> -->
+            <div class="card-body">
+              <h5 class="card-title">Counting</h5>
+              <p class="card-text">Count total number of votes.</p>
+              <a href="/count" class="btn btn-primary">Go</a>
+            </div>
+          </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
