@@ -1,0 +1,23 @@
+<!-- extend base layout -->
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="container">
+    <div class="row">
+      <div class="col-sm">
+        <form action="#" method="post">
+          <label for="basic-nik">Please Insert Your NIK </label>
+          <div class="input-group mb-2">
+            <input type="text" name="nik" class="form-control" id="basic-url" aria-describedby="basic-addon3">
+            <input type="submit" class="btn btn-secondary" value="submit">
+          </div>
+          {% if error %}
+            <div class="alert alert-danger" role="alert">
+                {{ error }}
+            </div>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

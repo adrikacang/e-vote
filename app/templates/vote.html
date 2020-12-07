@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+  <form action="#" method="post" role="form">
+    <div class="form-group">
+      <label for="nik">NIK</label>
+      <input type="text" name="nik" disabled class="form-control" id="basic-url" aria-describedby="basic-addon3" value={{nik}}>
+    </div>
+    <div class="form-group">
+      <label for="name">Name</label>
+      <input type="text" name="name" class="form-control" id="basic-url" aria-describedby="basic-addon3">
+    </div>
+    <div class="form-group">
+      <label for="address">Address</label>
+      <input type="text" name="address" class="form-control" id="basic-url" aria-describedby="basic-addon3">
+    </div>
+    <div class="form-group">
+      <label for="venue_id">Venue ID</label>
+      <input type="text" name="venue_id" class="form-control" id="basic-url" aria-describedby="basic-addon3">
+    </div>
+    <div class="form-group">
+      <label for="voted_candidate">Voted Candidate</label>
+      <div class="form-check ">
+        <input class="form-check-input" type="radio" name="voted_candidate" id="inlineRadio1" value="Jokowi">
+        <label class="form-check-label" for="inlineRadio1">Jokowi</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="voted_candidate" id="inlineRadio2" value="Prabowo">
+        <label class="form-check-label" for="inlineRadio2">Prabowo</label>
+      </div>
+    </div>
+    <div class="form-group">
+      {% if not has_voted %}
+      <input type="submit" class="btn btn-primary" value="submit">
+      {% else %}
+      <input  class="btn btn-primary" value="Congratulations!" disabled>
+      {% endif %}
+    </div>
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+      {{ error|safe }}
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success" role="alert">
+      {{ success|safe }}
+    </div>
+    {% endif %}
+  </form>
+  <a href="/" class="btn btn-secondary">Return</a>
+</div>
+{% endblock %}

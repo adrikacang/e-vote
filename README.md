@@ -22,10 +22,17 @@ $ cd python_blockchain_app
 $ pip install -r requirements.txt
 ```
 
+Install merkle tool library,
+
+```sh
+pip install merkletools
+```
+
 Start a blockchain node server,
 
 ```sh
 # Windows users can follow this: https://flask.palletsprojects.com/en/1.1.x/cli/#application-discovery
+# set FLASK_APP=node_server.py
 $ export FLASK_APP=node_server.py
 $ flask run --port 8000
 ```

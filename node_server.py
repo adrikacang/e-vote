@@ -3,16 +3,19 @@ import json
 import time
 
 from flask import Flask, request
+from merkletools import MerkleTools
+
 import requests
 
 
 class Block:
-    def __init__(self, index, transaction, timestamp, previous_hash, nonce=0):
+    def __init__(self, index, transactions, timestamp, previous_hash, nonce=0):
         self.index = index
-        self.transaction = transaction
+        self.transactions = transactions
         self.timestamp = timestamp
         self.previous_hash = previous_hash
         self.nonce = nonce
+        self.hash = '0'
 
     def compute_hash(self):
         """
@@ -21,6 +24,21 @@ class Block:
         block_string = json.dumps(self.__dict__, sort_keys=True)
         return sha256(block_string.encode()).hexdigest()
 
+    def merkle_tree(self):
+        mt = MerkleTools(hash_type="sha256")
+        for trx in self.transactions:
+            trx_string = json.dumps(trx)
+            mt.add_leaf(trx_string, True)
+        mt.make_tree()
+        return mt.get_merkle_root()
+
+    def verify_vote(self, leaf_index, merkle_root):
+        mt = MerkleTools(hash_type="sha256")
+        for trx in self.transactions:
+            trx_string = json.dumps(trx)
+            mt.add_leaf(trx_string, True)
+        mt.make_tree()
+        return mt.validate_proof(mt.get_proof(leaf_index), mt.get_leaf(leaf_index), merkle_root) # True
 
 class Blockchain:
     # difficulty of our PoW algorithm
@@ -29,6 +47,7 @@ class Blockchain:
     def __init__(self):
         self.unconfirmed_transactions = []
         self.chain = []
+        self.niks = []
 
     def create_genesis_block(self):
         """
@@ -36,7 +55,7 @@ class Blockchain:
         the chain. The block has index 0, previous_hash as 0, and
         a valid hash.
         """
-        genesis_block = Block(0, { 'nik': '0' }, 0, "0")
+        genesis_block = Block(0, [], 0, "0")
         genesis_block.hash = genesis_block.compute_hash()
         self.chain.append(genesis_block)
 
@@ -121,16 +140,13 @@ class Blockchain:
             return False
 
         last_block = self.last_block
+        new_block = Block(index=last_block.index + 1,
+                          transactions=self.unconfirmed_transactions,
+                          timestamp=time.time(),
+                          previous_hash=last_block.hash)
 
-        for transaction in self.unconfirmed_transactions: 
-            new_block = Block(index=last_block.index + 1,
-                              transaction=transaction,
-                              timestamp=time.time(),
-                              previous_hash=last_block.hash)
-
-            proof = self.proof_of_work(new_block)
-            self.add_block(new_block, proof)
-            print("Block #{} is mined.".format(last_block.index))
+        proof = self.proof_of_work(new_block)
+        self.add_block(new_block, proof)
 
         self.unconfirmed_transactions = []
 
@@ -146,6 +162,22 @@ blockchain.create_genesis_block()
 # the address to other participating members of the network
 peers = set()
 
+# endpoint to login. This will be used by
+# our application to add new data (posts) to the blockchain
+@app.route('/login', methods=['POST'])
+def login():
+    tx_data = request.get_json()
+    required_fields = ["nik"]
+
+    for field in required_fields:
+        if not tx_data.get(field):
+            return "Invalid transaction data", 404
+
+    if tx_data["nik"] in blockchain.niks:
+        return "Voter has been voted", 400
+
+    return "Voter has not been voted", 200
+
 
 # endpoint to submit a new transaction. This will be used by
 # our application to add new data (posts) to the blockchain
@@ -157,12 +189,17 @@ def new_transaction():
     for field in required_fields:
         if not tx_data.get(field):
             return "Invalid transaction data", 404
+    
+    if tx_data["nik"] in blockchain.niks:
+        return "This voter has been voted", 400
 
-    tx_data["timestamp"] = time.time()
+    tx_data_str = json.dumps(tx_data)
+    tx_data_hash = sha256(tx_data_str.encode()).hexdigest()
 
     blockchain.add_new_transaction(tx_data)
-
-    return "Success", 201
+    tx_leaf_index = len(blockchain.unconfirmed_transactions) - 1 #get leaf index
+    blockchain.niks.append(tx_data['nik'])
+    return "<p> Vote has been requested, please note the following data for verifaction purpose. </p> <p> vote hash: " + tx_data_hash + "</p> <p>leaf index: " +  str(tx_leaf_index) + "</p>", 201
 
 
 # endpoint to return the node's copy of the chain.
@@ -193,7 +230,7 @@ def mine_unconfirmed_transactions():
         if chain_length == len(blockchain.chain):
             # announce the recently mined block to the network
             announce_new_block(blockchain.last_block)
-        return "#{} blocks are mined.".format(blockchain.last_block.index)
+        return "<p> A new block has been mined. Please record this for verification purpose. </p> <p> block-index: {} </p> <p> merkle-root: {} </p>".format(blockchain.last_block.index, blockchain.last_block.merkle_tree()), 200
 
 
 # endpoint to add new peers to the network.
@@ -294,21 +331,25 @@ def count_vote():
         "Prabowo": 0
     }
     for block in blockchain.chain:
-        voted_candidate = block.transaction.get('voted_candidate')
-        candidates[voted_candidate] += 1
-    print(json.dumps(candidates))
+        for transaction in block.transactions:
+            voted_candidate = transaction.get('voted_candidate')
+            candidates[voted_candidate] += 1
+    return json.dumps(candidates)
 
 @app.route('/verify_vote', methods=['POST'])
 def verify_vote():
-    hash = request.get_json()["hash"]
-    if not hash:
-        return "Invalid data", 400
+    block_index = request.get_json()["block_index"]
+    merkle_root = request.get_json()["merkle_root"]
+    leaf_index = request.get_json()["leaf_index"]
 
-    for block in blockchain.chain:
-        if block.hash == hash:
-            return json.dumps(block.transaction), 200
+    if block_index is None or merkle_root is None or leaf_index is None:
+        return "Invalid or Missing Parameters", 400
 
-    return "Hash not found", 400
+    block = blockchain.chain[block_index]
+    if block.verify_vote(leaf_index, merkle_root):
+        return "Your vote has been verified", 200
+    else:
+        return "Data is not found or has been tampered, verifiaction failed", 400
 
 def consensus():
     """
