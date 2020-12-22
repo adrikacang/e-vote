@@ -22,11 +22,14 @@ $ cd python_blockchain_app
 $ pip install -r requirements.txt
 ```
 
-Install merkle tool library,
+Install merkle tool library & crypto,
 
 ```sh
 pip install merkletools
 ```
+
+Migrate database table,
+$ python databse.py
 
 Start a blockchain node server,
 

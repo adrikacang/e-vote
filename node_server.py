@@ -1,6 +1,7 @@
 from hashlib import sha256
 import json
 import time
+import sqlite3
 
 from flask import Flask, request
 from merkletools import MerkleTools
@@ -47,7 +48,6 @@ class Blockchain:
     def __init__(self):
         self.unconfirmed_transactions = []
         self.chain = []
-        self.niks = []
 
     def create_genesis_block(self):
         """
@@ -167,13 +167,13 @@ peers = set()
 @app.route('/login', methods=['POST'])
 def login():
     tx_data = request.get_json()
-    required_fields = ["nik"]
+    required_fields = ["uid"]
 
     for field in required_fields:
         if not tx_data.get(field):
             return "Invalid transaction data", 404
 
-    if tx_data["nik"] in blockchain.niks:
+    if is_user_exist(tx_data["uid"]):
         return "Voter has been voted", 400
 
     return "Voter has not been voted", 200
@@ -184,13 +184,13 @@ def login():
 @app.route('/new_transaction', methods=['POST'])
 def new_transaction():
     tx_data = request.get_json()
-    required_fields = ["name", "nik", "address", "venue_id", "voted_candidate"]
+    required_fields = ["name", "uid", "voted_candidate"]
 
     for field in required_fields:
         if not tx_data.get(field):
             return "Invalid transaction data", 404
     
-    if tx_data["nik"] in blockchain.niks:
+    if is_user_exist(tx_data["uid"]):
         return "This voter has been voted", 400
 
     tx_data_str = json.dumps(tx_data)
@@ -198,7 +198,7 @@ def new_transaction():
 
     blockchain.add_new_transaction(tx_data)
     tx_leaf_index = len(blockchain.unconfirmed_transactions) - 1 #get leaf index
-    blockchain.niks.append(tx_data['nik'])
+    register_user(tx_data['uid'])
     return "<p> Vote has been requested, please note the following data for verifaction purpose. </p> <p> vote hash: " + tx_data_hash + "</p> <p>leaf index: " +  str(tx_leaf_index) + "</p>", 201
 
 
@@ -327,8 +327,8 @@ def get_pending_tx():
 @app.route('/count_vote', methods=['GET'])
 def count_vote():
     candidates = {
-        "Jokowi": 0,
-        "Prabowo": 0
+        "Apple": 0,
+        "Banana": 0
     }
     for block in blockchain.chain:
         for transaction in block.transactions:
@@ -391,3 +391,44 @@ def announce_new_block(block):
 
 # Uncomment this line if you want to specify the port number in the code
 #app.run(debug=True, port=8000)
+
+
+#database to register users
+def register_user(uid):
+  try:
+    sqliteConnection = sqlite3.connect('test.db')
+    cursor = sqliteConnection.cursor()
+
+    sqlite_insert_with_param = """INSERT INTO USERS(uid) VALUES (?);"""
+
+    cursor.execute(sqlite_insert_with_param, (uid,))
+    sqliteConnection.commit()
+    cursor.close()
+  except sqlite3.Error as error:
+    print("Failed to insert Python variable into sqlite table", error)
+  finally:
+        if (sqliteConnection):
+            sqliteConnection.close()
+            print("The SQLite connection is closed")
+
+def is_user_exist(uid):
+  try:
+    result = False
+    sqliteConnection = sqlite3.connect('test.db')
+    cursor = sqliteConnection.cursor()
+
+    sql_select_query = """select * from USERS where uid = ?"""
+    cursor.execute(sql_select_query, (uid,))
+    records = cursor.fetchall()
+    for row in records:
+      if row[1] == uid:
+          result = True
+    cursor.close()
+    sqliteConnection.close()
+  except sqlite3.Error as error:
+    print("Failed to read data from sqlite table", error)
+  finally:
+    if (sqliteConnection):
+      sqliteConnection.close()
+      print("The SQLite connection is closed")
+    return result

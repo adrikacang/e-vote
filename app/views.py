@@ -9,9 +9,9 @@ from app import app
 
 # The node with which our application interacts, there can be multiple
 # such nodes as well.
-CONNECTED_NODE_ADDRESS = "http://127.0.0.1:8000"
+CONNECTED_NODE_ADDRESS = "http://127.0.0.1:8080"
 is_login = False
-nik = None
+uid = None
 has_voted = False
 success = None
 error = None
@@ -37,11 +37,11 @@ def login():
     Endpoint to create a new transaction via our application.
     """
     global is_login
-    global nik
+    global uid
     error = None
     if request.method == "POST":
         post_object = {
-            'nik': request.form["nik"]
+            'uid': request.form["uid"]
         }
 
         # Submit a login
@@ -54,7 +54,7 @@ def login():
         
             if response.status_code == 200:
                 is_login = True
-                nik = request.form["nik"]
+                uid = request.form["uid"]
                 return redirect(url_for('index'))
             else: 
                 error = "This account has voted before"
@@ -82,16 +82,12 @@ def vote():
     
     if request.method == "POST":
         name = request.form["name"]
-        address = request.form["address"]
-        venue_id = request.form["venue_id"]
         voted_candidate = request.form["voted_candidate"]
         # timestamp = time.time()
 
         post_object = {
-            'nik': nik,
+            'uid': uid,
             'name': name,
-            'address': address,
-            'venue_id': venue_id,
             'voted_candidate': voted_candidate
         }
         
@@ -118,7 +114,7 @@ def vote():
                            node_address=CONNECTED_NODE_ADDRESS,
                            readable_time=timestamp_to_string,
                            has_voted= has_voted,
-                           nik = nik,
+                           uid = uid,
                            success = success,
                            error= error)
 
@@ -210,13 +206,13 @@ def verify():
 @app.route('/logout', methods=['GET'])
 def logout():
     global is_login
-    global nik
+    global uid
     global success
     global error
     global has_voted
 
     is_login = False
-    nik = None
+    uid = None
     success = None
     error = None
     has_voted = False
