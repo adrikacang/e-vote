@@ -4,11 +4,17 @@ import json
 
 # transactions =  [{"name": "R Muh Adrian Septiandry", "nik": "31750205099500031111", "address": "Camar 3 BC 19", "venue_id": "2", "voted_candidate": "Jokowi", "timestamp": 1606492536.3499079}, {"name": "Endang Sanitowati", "nik": "31750205099500012382", "address": "Camar 3 BC 19", "venue_id": "2", "voted_candidate": "Prabowo", "timestamp": 1606492561.7882664}]
 transactions = [{
-    "name":"R Muh Adrian Septiandry",
     "nik":"31750205099500031111",
-    "address":"Camar 3 BC 19",
-    "venue_id":"2",
-    "voted_candidate":"Jokowi"
+    "voted_candidate":"Apple"
+}, {
+    "nik":"123123123123123123",
+    "voted_candidate":"Banana"
+}, {
+    "nik":"123123123123124321",
+    "voted_candidate":"Banana"
+}, {
+    "nik":"123123123123123333",
+    "voted_candidate":"Banana"
 }]
 mt = MerkleTools(hash_type="sha256")
 
@@ -26,7 +32,13 @@ print("get proof 0", mt.get_proof(0))
 print("get proof 1", mt.get_proof(1)) 
 
 print("get leaf 0", mt.get_leaf(0))
+print("get leaf 1", mt.get_leaf(0))
 print("sha256 hexdigest", sha256(json.dumps(transactions[0]).encode()).hexdigest())
 
 
-print("validate", mt.validate_proof(mt.get_proof(0), '1e24510073e374315875928d345eb689387fca89c3d2872050898b5628672229', mt.get_merkle_root()))  # True
+leaf_hash =  sha256(json.dumps(transactions[1]).encode()).hexdigest()
+
+leaf_count =  mt.get_leaf_count()
+for x in range(leaf_count):
+  if (leaf_hash == mt.get_leaf(x)):
+    print("validate", mt.validate_proof(mt.get_proof(x), leaf_hash, mt.get_merkle_root())) # True

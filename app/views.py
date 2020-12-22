@@ -9,7 +9,7 @@ from app import app
 
 # The node with which our application interacts, there can be multiple
 # such nodes as well.
-CONNECTED_NODE_ADDRESS = "http://127.0.0.1:8080"
+CONNECTED_NODE_ADDRESS = "http://127.0.0.1:8000"
 is_login = False
 uid = None
 has_voted = False
@@ -171,12 +171,12 @@ def verify():
     if request.method == "POST":
         block_index = request.form["block_index"]
         merkle_root = request.form["merkle_root"]
-        leaf_index = request.form["leaf_index"]
+        leaf_hash = request.form["leaf_hash"]
 
         post_object = {
             "block_index": int(block_index),
             "merkle_root": merkle_root,
-            "leaf_index": int(leaf_index)
+            "leaf_hash": leaf_hash
         }
         
         # Submit a new transaction

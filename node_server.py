@@ -33,13 +33,19 @@ class Block:
         mt.make_tree()
         return mt.get_merkle_root()
 
-    def verify_vote(self, leaf_index, merkle_root):
+    def verify_vote(self, leaf_hash, merkle_root):
         mt = MerkleTools(hash_type="sha256")
+        counter = 0
         for trx in self.transactions:
             trx_string = json.dumps(trx)
             mt.add_leaf(trx_string, True)
+            if(mt.get_leaf(counter) == leaf_hash):
+                break
+            counter += 1
         mt.make_tree()
-        return mt.validate_proof(mt.get_proof(leaf_index), mt.get_leaf(leaf_index), merkle_root) # True
+        if merkle_root is None:
+            merkle_root = mt.get_merkle_root()
+        return mt.validate_proof(mt.get_proof(counter), leaf_hash, merkle_root) # True
 
 class Blockchain:
     # difficulty of our PoW algorithm
@@ -197,9 +203,8 @@ def new_transaction():
     tx_data_hash = sha256(tx_data_str.encode()).hexdigest()
 
     blockchain.add_new_transaction(tx_data)
-    tx_leaf_index = len(blockchain.unconfirmed_transactions) - 1 #get leaf index
     register_user(tx_data['uid'])
-    return "<p> Vote has been requested, please note the following data for verifaction purpose. </p> <p> vote hash: " + tx_data_hash + "</p> <p>leaf index: " +  str(tx_leaf_index) + "</p>", 201
+    return "<p> Vote has been requested, please note the following data for verifaction purpose. </p> <p> vote hash: <b>" + tx_data_hash + "</b>.</p><p>You can only verify your data after your vote has been confirmed.</p>", 201
 
 
 # endpoint to return the node's copy of the chain.
@@ -340,13 +345,16 @@ def count_vote():
 def verify_vote():
     block_index = request.get_json()["block_index"]
     merkle_root = request.get_json()["merkle_root"]
-    leaf_index = request.get_json()["leaf_index"]
+    leaf_hash = request.get_json()["leaf_hash"]
 
-    if block_index is None or merkle_root is None or leaf_index is None:
+    if block_index is None or leaf_hash is None:
         return "Invalid or Missing Parameters", 400
 
-    block = blockchain.chain[block_index]
-    if block.verify_vote(leaf_index, merkle_root):
+    try:
+      block = blockchain.chain[block_index]
+    except IndexError:
+      return "Data is not found or has been tampered, verifiaction failed", 400
+    if block.verify_vote(leaf_hash, merkle_root):
         return "Your vote has been verified", 200
     else:
         return "Data is not found or has been tampered, verifiaction failed", 400
